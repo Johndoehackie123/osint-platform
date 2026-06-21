@@ -10,15 +10,16 @@ const dnsLookup = promisify(dns.lookup);
 const dnsReverse = promisify(dns.reverse);
 const db = new Database('osint.db');
 
-// Helper to broadcast progress
 const sendProgress = (status, progress, data = {}) => {
-  global.broadcastProgress({
-    type: 'progress',
-    status,
-    progress,
-    ...data,
-    timestamp: new Date().toISOString()
-  });
+  if (global.broadcastProgress) {
+    global.broadcastProgress({
+      type: 'progress',
+      status,
+      progress,
+      ...data,
+      timestamp: new Date().toISOString()
+    });
+  }
 };
 
 // 1. Domain Reconnaissance
@@ -30,7 +31,6 @@ router.post('/domain-recon', async (req, res) => {
     sendProgress('Starting domain reconnaissance...', 10);
     const results = {};
 
-    // DNS lookup
     sendProgress('Resolving DNS...', 20);
     try {
       const dnsResult = await dnsLookup(domain);
@@ -40,26 +40,13 @@ router.post('/domain-recon', async (req, res) => {
       results.dnsError = e.message;
     }
 
-    // Geolocation
     if (results.ipAddress) {
       sendProgress('Fetching geolocation...', 40);
       const geo = geoip.lookup(results.ipAddress);
-      results.geolocation = geo;
+      results.geolocation = geo || { error: 'Could not determine geolocation' };
     }
 
-    // Whois info via API
-    sendProgress('Fetching WHOIS data...', 60);
-    try {
-      const whoisRes = await axios.get(`https://whois.iana.org/lookup?query=${domain}`, {
-        timeout: 5000
-      }).catch(() => ({ data: 'WHOIS data unavailable' }));
-      results.whoisPreview = 'WHOIS data available';
-    } catch (e) {
-      results.whoisError = 'Could not fetch WHOIS';
-    }
-
-    // MX Records
-    sendProgress('Fetching MX records...', 75);
+    sendProgress('Fetching MX records...', 60);
     try {
       const mxRes = await new Promise((resolve, reject) => {
         dns.resolveMx(domain, (err, data) => {
@@ -67,13 +54,12 @@ router.post('/domain-recon', async (req, res) => {
           else resolve(data);
         });
       });
-      results.mxRecords = mxRes.slice(0, 5);
+      results.mxRecords = mxRes.slice(0, 5).map(r => ({ exchange: r.exchange, priority: r.priority }));
     } catch (e) {
       results.mxError = e.message;
     }
 
-    // TXT Records
-    sendProgress('Fetching TXT records...', 85);
+    sendProgress('Fetching TXT records...', 80);
     try {
       const txtRes = await new Promise((resolve, reject) => {
         dns.resolveTxt(domain, (err, data) => {
@@ -81,14 +67,13 @@ router.post('/domain-recon', async (req, res) => {
           else resolve(data);
         });
       });
-      results.txtRecords = txtRes.slice(0, 5);
+      results.txtRecords = txtRes.slice(0, 5).map(r => r.join(''));
     } catch (e) {
       results.txtError = e.message;
     }
 
     sendProgress('Domain reconnaissance complete', 100);
 
-    // Store in database
     const stmt = db.prepare(`
       INSERT OR REPLACE INTO searches (type, query, result, created_at)
       VALUES (?, ?, ?, ?)
@@ -111,12 +96,10 @@ router.post('/ip-lookup', async (req, res) => {
     sendProgress('Starting IP lookup...', 10);
     const results = {};
 
-    // Geolocation
     sendProgress('Fetching geolocation...', 30);
     const geo = geoip.lookup(ip);
-    results.geolocation = geo;
+    results.geolocation = geo || { error: 'Could not determine geolocation' };
 
-    // Reverse DNS
     sendProgress('Reverse DNS lookup...', 50);
     try {
       const reverseDns = await dnsReverse(ip);
@@ -125,23 +108,8 @@ router.post('/ip-lookup', async (req, res) => {
       results.hostname = 'Reverse DNS failed';
     }
 
-    // ASN info via API
-    sendProgress('Fetching ASN information...', 70);
-    try {
-      const asnRes = await axios.get(`https://ipapi.co/${ip}/json/`, {
-        timeout: 5000
-      }).catch(() => null);
-      if (asnRes?.data) {
-        results.asn = asnRes.data.asn;
-        results.org = asnRes.data.org;
-      }
-    } catch (e) {
-      // API failed, continue
-    }
-
     sendProgress('IP lookup complete', 100);
 
-    // Store in database
     const stmt = db.prepare(`
       INSERT OR REPLACE INTO searches (type, query, result, created_at)
       VALUES (?, ?, ?, ?)
@@ -164,7 +132,6 @@ router.post('/email-verify', async (req, res) => {
     sendProgress('Starting email verification...', 10);
     const results = {};
 
-    // Basic validation
     sendProgress('Validating email format...', 20);
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     results.formatValid = emailRegex.test(email);
@@ -174,7 +141,6 @@ router.post('/email-verify', async (req, res) => {
       results.localPart = localPart;
       results.domain = domain;
 
-      // MX record check
       sendProgress('Checking MX records...', 50);
       try {
         const mxRecords = await new Promise((resolve, reject) => {
@@ -193,7 +159,6 @@ router.post('/email-verify', async (req, res) => {
 
     sendProgress('Email verification complete', 100);
 
-    // Store in database
     const stmt = db.prepare(`
       INSERT OR REPLACE INTO searches (type, query, result, created_at)
       VALUES (?, ?, ?, ?)
@@ -207,25 +172,25 @@ router.post('/email-verify', async (req, res) => {
   }
 });
 
-// 4. Port Scanner (simple version)
+// 4. Port Scanner
 router.post('/port-scan', async (req, res) => {
-  const { host, ports } = req.body;
+  const { host } = req.body;
   if (!host) return res.status(400).json({ error: 'Host required' });
 
   try {
     sendProgress('Starting port scan...', 10);
     const results = { host, openPorts: [], commonPorts: {} };
-    const portList = ports ? ports.split(',').map(p => parseInt(p)) : [80, 443, 22, 3306, 5432, 8080, 8443];
+    const commonPorts = [80, 443, 22, 3306, 5432, 8080, 8443, 21, 25, 53];
 
     sendProgress('Scanning ports...', 20);
-    for (let i = 0; i < portList.length; i++) {
-      const port = portList[i];
+    for (let i = 0; i < commonPorts.length; i++) {
+      const port = commonPorts[i];
       try {
         const net = await import('net');
         const socket = new net.Socket();
         
         await new Promise((resolve) => {
-          socket.setTimeout(1000);
+          socket.setTimeout(500);
           socket.on('error', () => resolve());
           socket.on('timeout', () => {
             socket.destroy();
@@ -241,12 +206,11 @@ router.post('/port-scan', async (req, res) => {
       } catch (e) {
         // Port closed
       }
-      sendProgress(`Scanning ports... ${i + 1}/${portList.length}`, 20 + (i / portList.length) * 70);
+      sendProgress(`Scanning ports... ${i + 1}/${commonPorts.length}`, 20 + (i / commonPorts.length) * 70);
     }
 
     sendProgress('Port scan complete', 100);
 
-    // Store in database
     const stmt = db.prepare(`
       INSERT OR REPLACE INTO searches (type, query, result, created_at)
       VALUES (?, ?, ?, ?)
@@ -303,7 +267,6 @@ router.post('/username-search', async (req, res) => {
 
     sendProgress('Username search complete', 100);
 
-    // Store in database
     const stmt = db.prepare(`
       INSERT OR REPLACE INTO searches (type, query, result, created_at)
       VALUES (?, ?, ?, ?)
@@ -324,7 +287,7 @@ router.post('/ssl-lookup', async (req, res) => {
 
   try {
     sendProgress('Starting SSL certificate lookup...', 10);
-    const results = {};
+    const results = { domain, certificates: [] };
 
     sendProgress('Fetching SSL certificate data...', 50);
     try {
@@ -332,18 +295,17 @@ router.post('/ssl-lookup', async (req, res) => {
         timeout: 5000
       }).catch(() => ({ data: [] }));
       
-      results.certificates = certRes.data.slice(0, 5).map(cert => ({
+      results.certificates = (certRes.data || []).slice(0, 5).map(cert => ({
         issuer: cert.issuer_name,
         notBefore: cert.not_before,
         notAfter: cert.not_after
-      })) || [];
+      }));
     } catch (e) {
       results.certificatesError = e.message;
     }
 
     sendProgress('SSL lookup complete', 100);
 
-    // Store in database
     const stmt = db.prepare(`
       INSERT OR REPLACE INTO searches (type, query, result, created_at)
       VALUES (?, ?, ?, ?)
@@ -377,7 +339,7 @@ router.post('/subdomain-finder', async (req, res) => {
         subRes.data.forEach(item => {
           const names = item.name_value?.split('\n') || [];
           names.forEach(name => {
-            if (name.endsWith(domain)) subs.add(name);
+            if (name && name.endsWith(domain)) subs.add(name);
           });
         });
       }
@@ -388,7 +350,6 @@ router.post('/subdomain-finder', async (req, res) => {
 
     sendProgress('Subdomain enumeration complete', 100);
 
-    // Store in database
     const stmt = db.prepare(`
       INSERT OR REPLACE INTO searches (type, query, result, created_at)
       VALUES (?, ?, ?, ?)
@@ -402,18 +363,72 @@ router.post('/subdomain-finder', async (req, res) => {
   }
 });
 
-// 8. Search History
-router.get('/history', (req, res) => {
+// 8. DNS Lookup
+router.post('/dns-lookup', async (req, res) => {
+  const { domain, recordType = 'all' } = req.body;
+  if (!domain) return res.status(400).json({ error: 'Domain required' });
+
   try {
-    const stmt = db.prepare('SELECT * FROM searches ORDER BY created_at DESC LIMIT 50');
-    const results = stmt.all();
+    const results = {};
+
+    const lookupRecord = (type) => {
+      return new Promise((resolve) => {
+        dns['resolve' + (type === 'all' ? 'Any' : type.toUpperCase())](domain, (err, data) => {
+          if (err) {
+            resolve(null);
+          } else {
+            resolve(data);
+          }
+        });
+      });
+    };
+
+    if (recordType === 'all' || recordType === 'a') {
+      results.aRecords = await lookupRecord('a');
+    }
+    if (recordType === 'all' || recordType === 'mx') {
+      results.mxRecords = await lookupRecord('mx');
+    }
+    if (recordType === 'all' || recordType === 'txt') {
+      results.txtRecords = await lookupRecord('txt');
+    }
+
     res.json({ success: true, results });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// 9. Statistics
+// 9. History
+router.get('/history', (req, res) => {
+  try {
+    const stmt = db.prepare('SELECT id, type, query, result, created_at FROM searches ORDER BY created_at DESC LIMIT 100');
+    const results = stmt.all();
+    
+    // Parse result JSON strings
+    const parsed = results.map(r => ({
+      ...r,
+      result: r.result ? JSON.parse(r.result) : null
+    }));
+    
+    res.json({ success: true, results: parsed });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Clear history
+router.delete('/history', (req, res) => {
+  try {
+    const stmt = db.prepare('DELETE FROM searches');
+    stmt.run();
+    res.json({ success: true, message: 'History cleared' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 10. Statistics
 router.get('/stats', (req, res) => {
   try {
     const stmt = db.prepare(`

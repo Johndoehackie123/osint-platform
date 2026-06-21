@@ -3,185 +3,702 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>OSINT Platform - Professional Intelligence Tools</title>
+  <title>OSINT Platform - Professional Intelligence Gathering</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    @keyframes pulse-ring {
-      0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
-      70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+    :root {
+      --primary: #3b82f6;
+      --primary-dark: #1e40af;
+      --secondary: #8b5cf6;
+      --accent: #ec4899;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
     }
-    .pulse-ring { animation: pulse-ring 2s infinite; }
-    .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-    .tool-card { transition: all 0.3s ease; }
-    .tool-card:hover { transform: translateY(-5px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2); }
-    .progress-bar { transition: width 0.3s ease; }
-    .scan-animation { animation: scan 1s infinite; }
-    @keyframes scan { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(1.1); } }
+
+    * {
+      transition: all 0.3s ease;
+    }
+
+    body {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    .gradient-text {
+      background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .glass-effect {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .card-hover {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .card-hover:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 20px 40px rgba(59, 130, 246, 0.2);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      color: white;
+      font-weight: 600;
+      padding: 10px 24px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .btn-primary:hover {
+      box-shadow: 0 10px 25px rgba(59, 130, 246, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    .nav-active {
+      border-bottom: 3px solid #3b82f6;
+      color: #3b82f6;
+    }
+
+    .loading-spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(59, 130, 246, 0.3);
+      border-top: 3px solid #3b82f6;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    @keyframes pulse-glow {
+      0%, 100% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.5); }
+      50% { box-shadow: 0 0 40px rgba(59, 130, 246, 0.8); }
+    }
+
+    .pulse-glow {
+      animation: pulse-glow 2s ease-in-out infinite;
+    }
+
+    @keyframes slide-in {
+      from {
+        opacity: 0;
+        transform: translateX(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    .slide-in {
+      animation: slide-in 0.5s ease-out;
+    }
+
+    .input-field {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      color: white;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: all 0.3s ease;
+    }
+
+    .input-field:focus {
+      outline: none;
+      background: rgba(255, 255, 255, 0.08);
+      border-color: #3b82f6;
+      box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+    }
+
+    .input-field::placeholder {
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: rgba(16, 185, 129, 0.1);
+      color: #10b981;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .status-badge.offline {
+      background: rgba(239, 68, 68, 0.1);
+      color: #ef4444;
+    }
+
+    .progress-bar {
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+      border-radius: 10px;
+      transition: width 0.3s ease;
+    }
+
+    .result-item {
+      background: rgba(255, 255, 255, 0.02);
+      border-left: 3px solid #3b82f6;
+      padding: 12px 16px;
+      border-radius: 4px;
+      margin: 8px 0;
+      font-size: 13px;
+    }
+
+    .result-item strong {
+      color: #3b82f6;
+    }
+
+    .tool-icon {
+      font-size: 32px;
+      margin-bottom: 12px;
+    }
+
+    .fade-in {
+      animation: fadeIn 0.5s ease-in;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .text-muted {
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    .text-success {
+      color: #10b981;
+    }
+
+    .text-danger {
+      color: #ef4444;
+    }
+
+    .text-warning {
+      color: #f59e0b;
+    }
+
+    .divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+      margin: 20px 0;
+    }
+
+    .code-block {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(59, 130, 246, 0.2);
+      border-radius: 8px;
+      padding: 16px;
+      overflow-x: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      color: #10b981;
+    }
+
+    .tab-button {
+      padding: 10px 20px;
+      border: none;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.6);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.3s ease;
+      font-weight: 500;
+    }
+
+    .tab-button.active {
+      color: #3b82f6;
+      border-bottom-color: #3b82f6;
+    }
+
+    .tab-button:hover {
+      color: #3b82f6;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 1000;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .modal.active {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-content {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: 12px;
+      padding: 32px;
+      max-width: 500px;
+      width: 90%;
+      animation: slide-in 0.3s ease;
+    }
+
+    .tooltip {
+      position: relative;
+      cursor: help;
+      border-bottom: 1px dotted #3b82f6;
+    }
+
+    .tooltip-text {
+      visibility: hidden;
+      background-color: #0f172a;
+      color: #fff;
+      text-align: center;
+      padding: 8px 12px;
+      border-radius: 6px;
+      position: absolute;
+      z-index: 1;
+      bottom: 125%;
+      left: 50%;
+      margin-left: -60px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      width: 120px;
+      border: 1px solid rgba(59, 130, 246, 0.5);
+      font-size: 12px;
+    }
+
+    .tooltip:hover .tooltip-text {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    @media (max-width: 768px) {
+      .hide-mobile {
+        display: none;
+      }
+    }
   </style>
 </head>
-<body class="bg-gray-900 text-gray-100 font-sans">
+<body class="text-gray-100">
   <div id="app">
-    <!-- Navigation -->
-    <nav class="gradient-bg shadow-lg sticky top-0 z-50">
-      <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-        <div class="flex items-center space-x-3">
-          <div class="w-10 h-10 bg-blue-400 rounded-lg flex items-center justify-center font-bold text-lg">🕵️</div>
-          <h1 class="text-2xl font-bold text-white">OSINT Platform</h1>
-        </div>
-        <div class="flex items-center space-x-4">
-          <span id="status" class="flex items-center space-x-2 text-sm">
-            <div class="w-2 h-2 bg-green-400 rounded-full pulse-ring"></div>
-            <span>Live</span>
-          </span>
-          <a href="#stats" class="text-white hover:text-blue-300 transition">Stats</a>
+    <!-- Navbar -->
+    <nav class="glass-effect border-b border-gray-700 sticky top-0 z-40">
+      <div class="max-w-7xl mx-auto px-4 py-4">
+        <div class="flex justify-between items-center">
+          <div class="flex items-center gap-3 cursor-pointer" onclick="navigate('dashboard')">
+            <div class="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-600 rounded-lg flex items-center justify-center font-bold text-lg">🔍</div>
+            <div>
+              <h1 class="text-xl font-bold gradient-text">OSINT Platform</h1>
+              <p class="text-xs text-muted">Professional Intelligence</p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-6">
+            <div class="hidden md:flex gap-6">
+              <button onclick="navigate('dashboard')" class="tab-button nav-active" id="tab-dashboard">
+                <i class="fas fa-chart-line mr-2"></i>Dashboard
+              </button>
+              <button onclick="navigate('tools')" class="tab-button" id="tab-tools">
+                <i class="fas fa-wrench mr-2"></i>Tools
+              </button>
+              <button onclick="navigate('advanced')" class="tab-button" id="tab-advanced">
+                <i class="fas fa-brain mr-2"></i>Advanced
+              </button>
+              <button onclick="navigate('history')" class="tab-button" id="tab-history">
+                <i class="fas fa-history mr-2"></i>History
+              </button>
+            </div>
+
+            <div class="flex items-center gap-3">
+              <div class="status-badge" id="statusBadge">
+                <div class="w-2 h-2 bg-green-400 rounded-full pulse-glow"></div>
+                <span>Live</span>
+              </div>
+              <button onclick="toggleTheme()" class="p-2 hover:bg-white/10 rounded-lg transition">
+                <i class="fas fa-moon"></i>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </nav>
 
-    <!-- Header -->
-    <div class="gradient-bg py-12 text-center">
-      <h2 class="text-4xl font-bold mb-2">Professional OSINT Tools</h2>
-      <p class="text-blue-100">Real-time intelligence gathering & reconnaissance</p>
+    <!-- Dashboard Page -->
+    <div id="page-dashboard" class="page-content">
+      <div class="max-w-7xl mx-auto px-4 py-8">
+        <!-- Hero Section -->
+        <div class="glass-effect rounded-xl p-8 mb-8 border-blue-500/20 slide-in">
+          <h2 class="text-4xl font-bold mb-2 gradient-text">Welcome to OSINT Platform</h2>
+          <p class="text-gray-300 mb-6">Comprehensive open-source intelligence gathering suite with advanced reconnaissance tools</p>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-white/5 rounded-lg p-4 border border-blue-500/20">
+              <i class="fas fa-database text-blue-400 text-2xl mb-2"></i>
+              <h3 class="font-semibold">7+ Tools</h3>
+              <p class="text-sm text-muted">Integrated OSINT utilities</p>
+            </div>
+            <div class="bg-white/5 rounded-lg p-4 border border-purple-500/20">
+              <i class="fas fa-lightning-bolt text-purple-400 text-2xl mb-2"></i>
+              <h3 class="font-semibold">Real-time</h3>
+              <p class="text-sm text-muted">Live WebSocket updates</p>
+            </div>
+            <div class="bg-white/5 rounded-lg p-4 border border-pink-500/20">
+              <i class="fas fa-shield-alt text-pink-400 text-2xl mb-2"></i>
+              <h3 class="font-semibold">Secure</h3>
+              <p class="text-sm text-muted">Rate-limited & encrypted</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <div class="glass-effect rounded-xl p-6 border-green-500/20 card-hover">
+            <div class="text-3xl font-bold text-green-400 mb-2" id="stat-searches">0</div>
+            <p class="text-sm text-muted">Total Searches</p>
+            <div class="progress-bar mt-4">
+              <div class="progress-fill" style="width: 65%"></div>
+            </div>
+          </div>
+          <div class="glass-effect rounded-xl p-6 border-blue-500/20 card-hover">
+            <div class="text-3xl font-bold text-blue-400 mb-2" id="stat-domains">0</div>
+            <p class="text-sm text-muted">Domains Scanned</p>
+            <div class="progress-bar mt-4">
+              <div class="progress-fill" style="width: 45%"></div>
+            </div>
+          </div>
+          <div class="glass-effect rounded-xl p-6 border-purple-500/20 card-hover">
+            <div class="text-3xl font-bold text-purple-400 mb-2" id="stat-ips">0</div>
+            <p class="text-sm text-muted">IPs Analyzed</p>
+            <div class="progress-bar mt-4">
+              <div class="progress-fill" style="width: 55%"></div>
+            </div>
+          </div>
+          <div class="glass-effect rounded-xl p-6 border-pink-500/20 card-hover">
+            <div class="text-3xl font-bold text-pink-400 mb-2" id="stat-uptime">99.9%</div>
+            <p class="text-sm text-muted">Uptime</p>
+            <div class="progress-bar mt-4">
+              <div class="progress-fill" style="width: 99.9%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          <div class="glass-effect rounded-xl p-6 border-blue-500/20">
+            <h3 class="text-xl font-bold mb-6 flex items-center gap-2">
+              <i class="fas fa-chart-pie text-blue-400"></i>
+              Tool Usage Distribution
+            </h3>
+            <canvas id="usageChart" height="200"></canvas>
+          </div>
+          <div class="glass-effect rounded-xl p-6 border-purple-500/20">
+            <h3 class="text-xl font-bold mb-6 flex items-center gap-2">
+              <i class="fas fa-chart-line text-purple-400"></i>
+              Activity Timeline
+            </h3>
+            <canvas id="activityChart" height="200"></canvas>
+          </div>
+        </div>
+
+        <!-- Recent Searches -->
+        <div class="glass-effect rounded-xl p-6 border-green-500/20">
+          <div class="flex justify-between items-center mb-6">
+            <h3 class="text-xl font-bold flex items-center gap-2">
+              <i class="fas fa-history text-green-400"></i>
+              Recent Searches
+            </h3>
+            <button onclick="navigate('history')" class="text-sm text-blue-400 hover:text-blue-300">View All →</button>
+          </div>
+          <div id="recentSearches" class="space-y-3">
+            <p class="text-muted">No searches yet. Start by using the tools!</p>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- Main Container -->
+    <!-- Tools Page -->
+    <div id="page-tools" class="page-content hidden">
+      <div class="max-w-7xl mx-auto px-4 py-8">
+        <div class="mb-8">
+          <h2 class="text-3xl font-bold mb-2 gradient-text">OSINT Tools</h2>
+          <p class="text-gray-300">Professional intelligence gathering instruments</p>
+        </div>
+
+        <!-- Tools Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <!-- Domain Recon -->
+          <div class="glass-effect rounded-xl p-6 border-blue-500/20 card-hover slide-in">
+            <div class="tool-icon">🌐</div>
+            <h3 class="text-xl font-bold mb-2">Domain Reconnaissance</h3>
+            <p class="text-sm text-muted mb-4">Deep analysis of domain infrastructure, DNS records, geolocation, and WHOIS data</p>
+            <input type="text" id="domainInput" placeholder="example.com" class="input-field w-full mb-3" onkeypress="handleEnter(event, 'domain')">
+            <button onclick="runTool('domain')" class="btn-primary w-full flex items-center justify-center gap-2">
+              <i class="fas fa-search"></i>
+              Analyze Domain
+            </button>
+          </div>
+
+          <!-- IP Lookup -->
+          <div class="glass-effect rounded-xl p-6 border-purple-500/20 card-hover slide-in">
+            <div class="tool-icon">📍</div>
+            <h3 class="text-xl font-bold mb-2">IP Address Lookup</h3>
+            <p class="text-sm text-muted mb-4">Geolocation, ASN information, reverse DNS, and network details</p>
+            <input type="text" id="ipInput" placeholder="192.168.1.1" class="input-field w-full mb-3" onkeypress="handleEnter(event, 'ip')">
+            <button onclick="runTool('ip')" class="btn-primary w-full flex items-center justify-center gap-2">
+              <i class="fas fa-map-marker-alt"></i>
+              Lookup IP
+            </button>
+          </div>
+
+          <!-- Email Verify -->
+          <div class="glass-effect rounded-xl p-6 border-pink-500/20 card-hover slide-in">
+            <div class="tool-icon">✉️</div>
+            <h3 class="text-xl font-bold mb-2">Email Verification</h3>
+            <p class="text-sm text-muted mb-4">Validate email format, check MX records, and verify mail servers</p>
+            <input type="text" id="emailInput" placeholder="user@example.com" class="input-field w-full mb-3" onkeypress="handleEnter(event, 'email')">
+            <button onclick="runTool('email')" class="btn-primary w-full flex items-center justify-center gap-2">
+              <i class="fas fa-envelope"></i>
+              Verify Email
+            </button>
+          </div>
+
+          <!-- Port Scanner -->
+          <div class="glass-effect rounded-xl p-6 border-green-500/20 card-hover slide-in">
+            <div class="tool-icon">🔌</div>
+            <h3 class="text-xl font-bold mb-2">Port Scanner</h3>
+            <p class="text-sm text-muted mb-4">Scan common ports and identify open services on target hosts</p>
+            <input type="text" id="portHostInput" placeholder="example.com" class="input-field w-full mb-3" onkeypress="handleEnter(event, 'port')">
+            <button onclick="runTool('port')" class="btn-primary w-full flex items-center justify-center gap-2">
+              <i class="fas fa-network-wired"></i>
+              Scan Ports
+            </button>
+          </div>
+
+          <!-- Username Search -->
+          <div class="glass-effect rounded-xl p-6 border-yellow-500/20 card-hover slide-in">
+            <div class="tool-icon">👤</div>
+            <h3 class="text-xl font-bold mb-2">Username Search</h3>
+            <p class="text-sm text-muted mb-4">Search for usernames across 8+ social platforms and services</p>
+            <input type="text" id="usernameInput" placeholder="username" class="input-field w-full mb-3" onkeypress="handleEnter(event, 'username')">
+            <button onclick="runTool('username')" class="btn-primary w-full flex items-center justify-center gap-2">
+              <i class="fas fa-user-search"></i>
+              Search Username
+            </button>
+          </div>
+
+          <!-- SSL Lookup -->
+          <div class="glass-effect rounded-xl p-6 border-red-500/20 card-hover slide-in">
+            <div class="tool-icon">🔐</div>
+            <h3 class="text-xl font-bold mb-2">SSL Certificate Lookup</h3>
+            <p class="text-sm text-muted mb-4">Check SSL certificates, expiration dates, and certificate history</p>
+            <input type="text" id="sslInput" placeholder="example.com" class="input-field w-full mb-3" onkeypress="handleEnter(event, 'ssl')">
+            <button onclick="runTool('ssl')" class="btn-primary w-full flex items-center justify-center gap-2">
+              <i class="fas fa-certificate"></i>
+              Check SSL
+            </button>
+          </div>
+
+          <!-- Subdomain Finder -->
+          <div class="glass-effect rounded-xl p-6 border-cyan-500/20 card-hover slide-in">
+            <div class="tool-icon">🔍</div>
+            <h3 class="text-xl font-bold mb-2">Subdomain Enumeration</h3>
+            <p class="text-sm text-muted mb-4">Discover subdomains using certificate transparency logs</p>
+            <input type="text" id="subdomainInput" placeholder="example.com" class="input-field w-full mb-3" onkeypress="handleEnter(event, 'subdomain')">
+            <button onclick="runTool('subdomain')" class="btn-primary w-full flex items-center justify-center gap-2">
+              <i class="fas fa-project-diagram"></i>
+              Find Subdomains
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Advanced Tools Page -->
+    <div id="page-advanced" class="page-content hidden">
+      <div class="max-w-7xl mx-auto px-4 py-8">
+        <div class="mb-8">
+          <h2 class="text-3xl font-bold mb-2 gradient-text">Advanced Tools</h2>
+          <p class="text-gray-300">Enterprise-grade reconnaissance capabilities</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <!-- Bulk Domain Analyzer -->
+          <div class="glass-effect rounded-xl p-6 border-blue-500/20">
+            <h3 class="text-xl font-bold mb-4 flex items-center gap-2">
+              <i class="fas fa-layer-group text-blue-400"></i>
+              Bulk Domain Analyzer
+            </h3>
+            <p class="text-sm text-muted mb-4">Analyze multiple domains at once</p>
+            <textarea id="bulkDomainInput" placeholder="example.com
+test.com
+site.org" class="input-field w-full h-32 mb-3 font-mono text-sm" style="resize: none;"></textarea>
+            <button onclick="runBulkTool('domain')" class="btn-primary w-full flex items-center justify-center gap-2">
+              <i class="fas fa-cogs"></i>
+              Analyze All Domains
+            </button>
+          </div>
+
+          <!-- Whois Batch Lookup -->
+          <div class="glass-effect rounded-xl p-6 border-purple-500/20">
+            <h3 class="text-xl font-bold mb-4 flex items-center gap-2">
+              <i class="fas fa-database text-purple-400"></i>
+              WHOIS Batch Lookup
+            </h3>
+            <p class="text-sm text-muted mb-4">Get WHOIS information for multiple domains</p>
+            <textarea id="bulkWhoisInput" placeholder="example.com
+test.com
+site.org" class="input-field w-full h-32 mb-3 font-mono text-sm" style="resize: none;"></textarea>
+            <button onclick="runBulkTool('whois')" class="btn-primary w-full flex items-center justify-center gap-2">
+              <i class="fas fa-address-card"></i>
+              Batch WHOIS Lookup
+            </button>
+          </div>
+
+          <!-- DNS Enumeration -->
+          <div class="glass-effect rounded-xl p-6 border-green-500/20">
+            <h3 class="text-xl font-bold mb-4 flex items-center gap-2">
+              <i class="fas fa-globe text-green-400"></i>
+              Advanced DNS Enumeration
+            </h3>
+            <p class="text-sm text-muted mb-4">Comprehensive DNS record analysis</p>
+            <input type="text" id="dnsInput" placeholder="example.com" class="input-field w-full mb-3">
+            <div class="grid grid-cols-2 gap-2 mb-3">
+              <button onclick="runDNSTool('all')" class="btn-primary text-sm py-2">All Records</button>
+              <button onclick="runDNSTool('mx')" class="btn-primary text-sm py-2">MX Records</button>
+            </div>
+            <button onclick="runDNSTool('txt')" class="btn-primary w-full text-sm py-2">TXT Records</button>
+          </div>
+
+          <!-- GeoIP Mapping -->
+          <div class="glass-effect rounded-xl p-6 border-pink-500/20">
+            <h3 class="text-xl font-bold mb-4 flex items-center gap-2">
+              <i class="fas fa-map text-pink-400"></i>
+              GeoIP Mapping
+            </h3>
+            <p class="text-sm text-muted mb-4">Map IP addresses to geographic locations</p>
+            <input type="text" id="geoipInput" placeholder="1.1.1.1 or multiple IPs" class="input-field w-full mb-3">
+            <button onclick="runGeoIP()" class="btn-primary w-full flex items-center justify-center gap-2">
+              <i class="fas fa-location-dot"></i>
+              Map GeoIP
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- History Page -->
+    <div id="page-history" class="page-content hidden">
+      <div class="max-w-7xl mx-auto px-4 py-8">
+        <div class="mb-8 flex justify-between items-center">
+          <div>
+            <h2 class="text-3xl font-bold mb-2 gradient-text">Search History</h2>
+            <p class="text-gray-300">All your previous searches and results</p>
+          </div>
+          <button onclick="clearHistory()" class="btn-primary flex items-center gap-2">
+            <i class="fas fa-trash"></i>
+            Clear History
+          </button>
+        </div>
+
+        <!-- Filter Tabs -->
+        <div class="glass-effect rounded-xl p-4 mb-8 border-blue-500/20">
+          <div class="flex gap-4 overflow-x-auto">
+            <button onclick="filterHistory('all')" class="tab-button active filter-tab" data-filter="all">All</button>
+            <button onclick="filterHistory('domain_recon')" class="tab-button filter-tab" data-filter="domain_recon">Domain</button>
+            <button onclick="filterHistory('ip_lookup')" class="tab-button filter-tab" data-filter="ip_lookup">IP</button>
+            <button onclick="filterHistory('email_verify')" class="tab-button filter-tab" data-filter="email_verify">Email</button>
+            <button onclick="filterHistory('port_scan')" class="tab-button filter-tab" data-filter="port_scan">Port</button>
+          </div>
+        </div>
+
+        <!-- History Items -->
+        <div id="historyContainer" class="space-y-4">
+          <p class="text-muted">No searches found</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results Modal -->
+    <div id="resultsModal" class="modal">
+      <div class="modal-content max-w-2xl max-h-96 overflow-y-auto">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-bold gradient-text">Results</h2>
+          <button onclick="closeModal()" class="text-2xl text-gray-400 hover:text-white">&times;</button>
+        </div>
+        <div id="resultsContent" class="space-y-3"></div>
+        <div class="mt-6 flex gap-3">
+          <button onclick="copyResults()" class="btn-primary flex-1 flex items-center justify-center gap-2">
+            <i class="fas fa-copy"></i>
+            Copy Results
+          </button>
+          <button onclick="exportResults()" class="btn-primary flex-1 flex items-center justify-center gap-2">
+            <i class="fas fa-download"></i>
+            Export JSON
+          </button>
+          <button onclick="closeModal()" class="px-6 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg font-semibold transition">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Progress Indicator -->
+    <div id="progressIndicator" class="fixed bottom-8 right-8 glass-effect rounded-xl p-6 border-blue-500/20 hidden max-w-xs z-50 slide-in">
+      <div class="flex items-center justify-between mb-3">
+        <h4 class="font-semibold">Processing</h4>
+        <span id="progressPercent" class="text-sm text-blue-400">0%</span>
+      </div>
+      <div class="progress-bar">
+        <div id="progressFill" class="progress-fill" style="width: 0%"></div>
+      </div>
+      <p id="progressLabel" class="text-xs text-muted mt-2">Initializing...</p>
+    </div>
+
+    <!-- Zexyo Ad Banner -->
     <div class="max-w-7xl mx-auto px-4 py-8">
-      <!-- Progress Indicator -->
-      <div id="progressContainer" class="mb-8 hidden bg-gray-800 rounded-lg p-4 border border-gray-700">
-        <div class="flex justify-between items-center mb-2">
-          <span id="progressLabel" class="text-sm font-semibold">Processing...</span>
-          <span id="progressPercent" class="text-sm text-blue-400">0%</span>
-        </div>
-        <div class="w-full bg-gray-700 rounded-full h-2 overflow-hidden">
-          <div id="progressBar" class="bg-gradient-to-r from-blue-500 to-purple-500 h-full progress-bar" style="width: 0%"></div>
+      <div class="relative glass-effect rounded-xl p-8 border-2 border-purple-500/50 overflow-hidden group">
+        <div class="absolute inset-0 bg-gradient-to-r from-purple-600/20 to-pink-600/20 group-hover:from-purple-600/40 group-hover:to-pink-600/40 transition"></div>
+        <div class="relative z-10">
+          <div class="text-center">
+            <h3 class="text-3xl font-bold mb-2 gradient-text">🚀 Powered by Zexyo</h3>
+            <p class="text-gray-300 mb-4">Discover premium OSINT services and advanced intelligence tools</p>
+            <a href="https://zexyo.xyz" target="_blank" class="inline-block bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-8 py-3 rounded-lg font-bold transition transform hover:scale-105">
+              Visit Zexyo Platform →
+            </a>
+          </div>
         </div>
       </div>
-
-      <!-- Tools Grid -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-        <!-- Domain Recon -->
-        <div class="tool-card bg-gray-800 border border-gray-700 rounded-lg p-6 hover:border-blue-500">
-          <div class="flex items-center space-x-3 mb-4">
-            <span class="text-3xl">🌐</span>
-            <h3 class="text-xl font-bold">Domain Recon</h3>
-          </div>
-          <input type="text" id="domainInput" placeholder="example.com" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white placeholder-gray-400 mb-3 focus:outline-none focus:border-blue-500">
-          <button onclick="runTool('domain')" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-semibold transition">
-            Analyze Domain
-          </button>
-        </div>
-
-        <!-- IP Lookup -->
-        <div class="tool-card bg-gray-800 border border-gray-700 rounded-lg p-6 hover:border-blue-500">
-          <div class="flex items-center space-x-3 mb-4">
-            <span class="text-3xl">📍</span>
-            <h3 class="text-xl font-bold">IP Lookup</h3>
-          </div>
-          <input type="text" id="ipInput" placeholder="192.168.1.1" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white placeholder-gray-400 mb-3 focus:outline-none focus:border-blue-500">
-          <button onclick="runTool('ip')" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-semibold transition">
-            Lookup IP
-          </button>
-        </div>
-
-        <!-- Email Verify -->
-        <div class="tool-card bg-gray-800 border border-gray-700 rounded-lg p-6 hover:border-blue-500">
-          <div class="flex items-center space-x-3 mb-4">
-            <span class="text-3xl">✉️</span>
-            <h3 class="text-xl font-bold">Email Verify</h3>
-          </div>
-          <input type="text" id="emailInput" placeholder="user@example.com" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white placeholder-gray-400 mb-3 focus:outline-none focus:border-blue-500">
-          <button onclick="runTool('email')" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-semibold transition">
-            Verify Email
-          </button>
-        </div>
-
-        <!-- Port Scanner -->
-        <div class="tool-card bg-gray-800 border border-gray-700 rounded-lg p-6 hover:border-blue-500">
-          <div class="flex items-center space-x-3 mb-4">
-            <span class="text-3xl">🔌</span>
-            <h3 class="text-xl font-bold">Port Scanner</h3>
-          </div>
-          <input type="text" id="portHostInput" placeholder="example.com" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white placeholder-gray-400 mb-3 focus:outline-none focus:border-blue-500">
-          <button onclick="runTool('port')" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-semibold transition">
-            Scan Ports
-          </button>
-        </div>
-
-        <!-- Username Search -->
-        <div class="tool-card bg-gray-800 border border-gray-700 rounded-lg p-6 hover:border-blue-500">
-          <div class="flex items-center space-x-3 mb-4">
-            <span class="text-3xl">👤</span>
-            <h3 class="text-xl font-bold">Username Search</h3>
-          </div>
-          <input type="text" id="usernameInput" placeholder="username" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white placeholder-gray-400 mb-3 focus:outline-none focus:border-blue-500">
-          <button onclick="runTool('username')" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-semibold transition">
-            Search Username
-          </button>
-        </div>
-
-        <!-- SSL Lookup -->
-        <div class="tool-card bg-gray-800 border border-gray-700 rounded-lg p-6 hover:border-blue-500">
-          <div class="flex items-center space-x-3 mb-4">
-            <span class="text-3xl">🔒</span>
-            <h3 class="text-xl font-bold">SSL Lookup</h3>
-          </div>
-          <input type="text" id="sslInput" placeholder="example.com" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white placeholder-gray-400 mb-3 focus:outline-none focus:border-blue-500">
-          <button onclick="runTool('ssl')" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-semibold transition">
-            Check SSL
-          </button>
-        </div>
-
-        <!-- Subdomain Finder -->
-        <div class="tool-card bg-gray-800 border border-gray-700 rounded-lg p-6 hover:border-blue-500">
-          <div class="flex items-center space-x-3 mb-4">
-            <span class="text-3xl">🔍</span>
-            <h3 class="text-xl font-bold">Subdomain Finder</h3>
-          </div>
-          <input type="text" id="subdomainInput" placeholder="example.com" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white placeholder-gray-400 mb-3 focus:outline-none focus:border-blue-500">
-          <button onclick="runTool('subdomain')" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-semibold transition">
-            Find Subdomains
-          </button>
-        </div>
-      </div>
-
-      <!-- Results Section -->
-      <div id="resultsContainer" class="mb-12 hidden">
-        <h2 class="text-2xl font-bold mb-6 text-white">Results</h2>
-        <div id="resultsContent" class="bg-gray-800 border border-gray-700 rounded-lg p-6 overflow-auto max-h-96">
-          <pre id="resultsJSON" class="text-sm text-gray-300 font-mono"></pre>
-        </div>
-      </div>
-
-      <!-- Statistics -->
-      <div id="stats" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-        <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
-          <h3 class="text-xl font-bold mb-4">Search History</h3>
-          <div id="historyList" class="space-y-2 max-h-64 overflow-auto">
-            <p class="text-gray-400">Loading history...</p>
-          </div>
-        </div>
-        <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
-          <h3 class="text-xl font-bold mb-4">Statistics</h3>
-          <canvas id="statsChart"></canvas>
-        </div>
-      </div>
-
-      <!-- Ad Banner -->
-      <div class="bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg p-8 text-center mb-12 border-2 border-purple-400">
-        <h3 class="text-2xl font-bold mb-2">🚀 Powered by Zexyo</h3>
-        <p class="mb-4">Check out <a href="https://zexyo.xyz" target="_blank" class="underline font-bold hover:text-white">zexyo.xyz</a> for premium OSINT services and tools</p>
-        <a href="https://zexyo.xyz" target="_blank" class="inline-block bg-white text-purple-600 px-6 py-2 rounded font-bold hover:bg-purple-50 transition">
-          Visit Zexyo →
-        </a>
-      </div>
-
-      <!-- Footer -->
-      <footer class="text-center text-gray-400 border-t border-gray-700 pt-8">
-        <p>OSINT Platform v1.0 | Optimized for Render | WebSocket-enabled Real-time Updates</p>
-        <p class="text-sm mt-2">⚠️ Use responsibly and ethically. Follow local laws and regulations.</p>
-      </footer>
     </div>
   </div>
 

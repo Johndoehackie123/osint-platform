@@ -1,14 +1,18 @@
-// Initialize WebSocket
+// Global State
 let ws = null;
+let currentPage = 'dashboard';
+let currentResults = null;
+let searchHistory = [];
 let reconnectAttempts = 0;
 const MAX_RECONNECT_ATTEMPTS = 5;
 
+// ============= WebSocket Management =============
 function connectWebSocket() {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   ws = new WebSocket(`${protocol}//${window.location.host}`);
 
   ws.onopen = () => {
-    console.log('WebSocket connected');
+    console.log('✅ WebSocket connected');
     reconnectAttempts = 0;
     updateStatus('Live', true);
   };
@@ -25,7 +29,7 @@ function connectWebSocket() {
   };
 
   ws.onerror = (error) => {
-    console.error('WebSocket error:', error);
+    console.error('❌ WebSocket error:', error);
     updateStatus('Offline', false);
   };
 
@@ -39,85 +43,133 @@ function connectWebSocket() {
 }
 
 function updateStatus(text, isLive) {
-  const statusEl = document.getElementById('status');
-  const indicator = statusEl.querySelector('div');
+  const badge = document.getElementById('statusBadge');
+  const dot = badge.querySelector('div');
   if (isLive) {
-    indicator.className = 'w-2 h-2 bg-green-400 rounded-full pulse-ring';
+    dot.className = 'w-2 h-2 bg-green-400 rounded-full';
+    dot.style.animation = 'pulse-glow 2s ease-in-out infinite';
   } else {
-    indicator.className = 'w-2 h-2 bg-red-400 rounded-full';
+    dot.className = 'w-2 h-2 bg-red-400 rounded-full';
+    dot.style.animation = 'none';
   }
-  statusEl.querySelector('span').textContent = text;
+  badge.querySelector('span').textContent = text;
+}
+
+// ============= Navigation =============
+function navigate(page) {
+  // Hide all pages
+  document.querySelectorAll('[id^="page-"]').forEach(el => {
+    el.classList.add('hidden');
+  });
+
+  // Show selected page
+  const pageEl = document.getElementById(`page-${page}`);
+  if (pageEl) {
+    pageEl.classList.remove('hidden');
+    pageEl.classList.add('fade-in');
+  }
+
+  // Update active tab
+  document.querySelectorAll('.tab-button').forEach(btn => {
+    btn.classList.remove('nav-active');
+  });
+  const activeTab = document.getElementById(`tab-${page}`);
+  if (activeTab) {
+    activeTab.classList.add('nav-active');
+  }
+
+  currentPage = page;
+
+  // Load page-specific data
+  if (page === 'dashboard') {
+    loadDashboard();
+  } else if (page === 'history') {
+    loadHistory();
+  }
+}
+
+// ============= Progress Management =============
+function showProgress() {
+  document.getElementById('progressIndicator').classList.remove('hidden');
+}
+
+function hideProgress() {
+  setTimeout(() => {
+    document.getElementById('progressIndicator').classList.add('hidden');
+  }, 1000);
 }
 
 function updateProgress(status, progress) {
-  const container = document.getElementById('progressContainer');
-  const bar = document.getElementById('progressBar');
+  showProgress();
+  const indicator = document.getElementById('progressIndicator');
+  const fill = document.getElementById('progressFill');
   const label = document.getElementById('progressLabel');
   const percent = document.getElementById('progressPercent');
 
-  if (progress > 0 && progress < 100) {
-    container.classList.remove('hidden');
-  } else if (progress === 100) {
-    setTimeout(() => container.classList.add('hidden'), 1000);
-  }
-
-  bar.style.width = progress + '%';
+  fill.style.width = progress + '%';
   label.textContent = status;
   percent.textContent = progress + '%';
+
+  if (progress === 100) {
+    hideProgress();
+  }
 }
 
+// ============= Tool Execution =============
 async function runTool(tool) {
   let endpoint, payload;
+  const inputs = {
+    domain: document.getElementById('domainInput')?.value,
+    ip: document.getElementById('ipInput')?.value,
+    email: document.getElementById('emailInput')?.value,
+    port: document.getElementById('portHostInput')?.value,
+    username: document.getElementById('usernameInput')?.value,
+    ssl: document.getElementById('sslInput')?.value,
+    subdomain: document.getElementById('subdomainInput')?.value
+  };
 
   switch (tool) {
     case 'domain':
-      const domain = document.getElementById('domainInput').value;
-      if (!domain) return alert('Please enter a domain');
+      if (!inputs.domain) return showAlert('Please enter a domain', 'error');
       endpoint = '/api/osint/domain-recon';
-      payload = { domain };
+      payload = { domain: inputs.domain };
       break;
     case 'ip':
-      const ip = document.getElementById('ipInput').value;
-      if (!ip) return alert('Please enter an IP address');
+      if (!inputs.ip) return showAlert('Please enter an IP address', 'error');
       endpoint = '/api/osint/ip-lookup';
-      payload = { ip };
+      payload = { ip: inputs.ip };
       break;
     case 'email':
-      const email = document.getElementById('emailInput').value;
-      if (!email) return alert('Please enter an email');
+      if (!inputs.email) return showAlert('Please enter an email', 'error');
       endpoint = '/api/osint/email-verify';
-      payload = { email };
+      payload = { email: inputs.email };
       break;
     case 'port':
-      const host = document.getElementById('portHostInput').value;
-      if (!host) return alert('Please enter a host');
+      if (!inputs.port) return showAlert('Please enter a host', 'error');
       endpoint = '/api/osint/port-scan';
-      payload = { host };
+      payload = { host: inputs.port };
       break;
     case 'username':
-      const username = document.getElementById('usernameInput').value;
-      if (!username) return alert('Please enter a username');
+      if (!inputs.username) return showAlert('Please enter a username', 'error');
       endpoint = '/api/osint/username-search';
-      payload = { username };
+      payload = { username: inputs.username };
       break;
     case 'ssl':
-      const sslDomain = document.getElementById('sslInput').value;
-      if (!sslDomain) return alert('Please enter a domain');
+      if (!inputs.ssl) return showAlert('Please enter a domain', 'error');
       endpoint = '/api/osint/ssl-lookup';
-      payload = { domain: sslDomain };
+      payload = { domain: inputs.ssl };
       break;
     case 'subdomain':
-      const subDomain = document.getElementById('subdomainInput').value;
-      if (!subDomain) return alert('Please enter a domain');
+      if (!inputs.subdomain) return showAlert('Please enter a domain', 'error');
       endpoint = '/api/osint/subdomain-finder';
-      payload = { domain: subDomain };
+      payload = { domain: inputs.subdomain };
       break;
     default:
       return;
   }
 
   try {
-    updateProgress('Initializing...', 5);
+    updateProgress('Initializing search...', 5);
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -128,123 +180,396 @@ async function runTool(tool) {
     const result = await response.json();
 
     if (result.success) {
-      displayResults(result.results);
-      loadHistory();
-      loadStats();
+      currentResults = result.results;
+      displayResults(result.results, tool);
+      await loadHistory();
+      updateProgress('Complete!', 100);
     } else {
-      alert('Error: ' + (result.error || 'Unknown error'));
+      showAlert('Error: ' + (result.error || 'Unknown error'), 'error');
     }
   } catch (error) {
     console.error('Tool error:', error);
-    alert('Error running tool: ' + error.message);
+    showAlert('Error: ' + error.message, 'error');
   }
 }
 
-function displayResults(results) {
-  const container = document.getElementById('resultsContainer');
-  const content = document.getElementById('resultsJSON');
-  content.textContent = JSON.stringify(results, null, 2);
-  container.classList.remove('hidden');
-  container.scrollIntoView({ behavior: 'smooth' });
+async function runBulkTool(type) {
+  const textarea = type === 'domain' 
+    ? document.getElementById('bulkDomainInput')
+    : document.getElementById('bulkWhoisInput');
+  const items = textarea.value.trim().split('\n').filter(x => x);
+
+  if (items.length === 0) {
+    return showAlert('Please enter at least one item', 'error');
+  }
+
+  showProgress();
+  updateProgress('Processing bulk request...', 10);
+
+  try {
+    const results = {};
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i].trim();
+      updateProgress(`Processing ${i + 1} of ${items.length}...`, 10 + (i / items.length) * 80);
+
+      const endpoint = type === 'domain' ? '/api/osint/domain-recon' : '/api/osint/domain-recon';
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain: item })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        results[item] = data.results || {};
+      }
+    }
+
+    currentResults = results;
+    displayResults(results, 'bulk_' + type);
+    updateProgress('Bulk processing complete!', 100);
+  } catch (error) {
+    showAlert('Bulk processing error: ' + error.message, 'error');
+  }
 }
 
+async function runDNSTool(recordType) {
+  const domain = document.getElementById('dnsInput').value;
+  if (!domain) return showAlert('Please enter a domain', 'error');
+
+  try {
+    updateProgress('Fetching DNS records...', 20);
+    const response = await fetch('/api/osint/dns-lookup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ domain, recordType })
+    });
+
+    if (!response.ok) throw new Error('DNS lookup failed');
+    const result = await response.json();
+
+    if (result.success) {
+      currentResults = result.results;
+      displayResults(result.results, 'dns_' + recordType);
+      updateProgress('DNS lookup complete!', 100);
+    }
+  } catch (error) {
+    showAlert('DNS lookup error: ' + error.message, 'error');
+  }
+}
+
+async function runGeoIP() {
+  const ips = document.getElementById('geoipInput').value.split(/[\s,]+/).filter(x => x);
+  if (ips.length === 0) return showAlert('Please enter IP address(es)', 'error');
+
+  try {
+    updateProgress('Mapping IP locations...', 10);
+    const results = {};
+    for (let i = 0; i < ips.length; i++) {
+      const ip = ips[i];
+      updateProgress(`Mapping ${i + 1} of ${ips.length}...`, 10 + (i / ips.length) * 80);
+
+      const response = await fetch('/api/osint/ip-lookup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ip })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        results[ip] = data.results || {};
+      }
+    }
+
+    currentResults = results;
+    displayResults(results, 'geoip');
+    updateProgress('GeoIP mapping complete!', 100);
+  } catch (error) {
+    showAlert('GeoIP error: ' + error.message, 'error');
+  }
+}
+
+// ============= Results Display =============
+function displayResults(results, toolType) {
+  const modal = document.getElementById('resultsModal');
+  const content = document.getElementById('resultsContent');
+
+  let html = '';
+
+  if (typeof results === 'object') {
+    Object.entries(results).forEach(([key, value]) => {
+      if (typeof value === 'object') {
+        html += `
+          <div class="result-item">
+            <strong>${key}:</strong>
+            <div style="margin-left: 16px; margin-top: 8px;">
+              ${Object.entries(value)
+                .map(([k, v]) => `<div><span class="text-muted">${k}:</span> ${JSON.stringify(v)}</div>`)
+                .join('')}
+            </div>
+          </div>
+        `;
+      } else {
+        html += `<div class="result-item"><strong>${key}:</strong> ${value}</div>`;
+      }
+    });
+  } else {
+    html = `<div class="result-item">${JSON.stringify(results, null, 2)}</div>`;
+  }
+
+  content.innerHTML = html || '<p class="text-muted">No results found</p>';
+  modal.classList.add('active');
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) closeModal();
+  });
+}
+
+function closeModal() {
+  document.getElementById('resultsModal').classList.remove('active');
+}
+
+function copyResults() {
+  const text = document.getElementById('resultsContent').innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    showAlert('Results copied to clipboard!', 'success');
+  });
+}
+
+function exportResults() {
+  const json = JSON.stringify(currentResults, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `osint-results-${Date.now()}.json`;
+  a.click();
+}
+
+// ============= History Management =============
 async function loadHistory() {
   try {
     const response = await fetch('/api/osint/history');
     const data = await response.json();
-    const historyList = document.getElementById('historyList');
 
-    if (data.results && data.results.length > 0) {
-      historyList.innerHTML = data.results.map(item => `
-        <div class="bg-gray-700 rounded p-3 hover:bg-gray-600 cursor-pointer transition">
-          <div class="flex justify-between items-center">
-            <span class="font-semibold text-blue-400 text-sm">${item.type.replace('_', ' ')}</span>
-            <span class="text-gray-400 text-xs">${new Date(item.created_at).toLocaleDateString()}</span>
-          </div>
-          <p class="text-gray-300 text-sm truncate">${item.query}</p>
-        </div>
-      `).join('');
-    } else {
-      historyList.innerHTML = '<p class="text-gray-400">No searches yet</p>';
+    if (data.results) {
+      searchHistory = data.results;
+      updateHistoryDisplay(data.results, 'all');
     }
   } catch (error) {
     console.error('History load error:', error);
   }
 }
 
-let statsChart = null;
+function updateHistoryDisplay(items, filter) {
+  const container = document.getElementById('historyContainer');
+  const recentContainer = document.getElementById('recentSearches');
 
-async function loadStats() {
-  try {
-    const response = await fetch('/api/osint/stats');
-    const data = await response.json();
-    const ctx = document.getElementById('statsChart').getContext('2d');
+  // Filter items
+  let filtered = items;
+  if (filter !== 'all') {
+    filtered = items.filter(item => item.type === filter);
+  }
 
-    if (statsChart) {
-      statsChart.destroy();
+  // Update recent searches on dashboard
+  if (recentContainer) {
+    recentContainer.innerHTML = items.slice(0, 5).map(item => `
+      <div class="result-item cursor-pointer hover:bg-white/10" onclick="viewHistoryItem('${item.id}')">
+        <div class="flex justify-between items-start">
+          <div>
+            <span class="text-blue-400 font-semibold text-sm">${item.type.replace(/_/g, ' ').toUpperCase()}</span>
+            <p class="text-white font-medium mt-1">${item.query}</p>
+          </div>
+          <span class="text-xs text-muted">${new Date(item.created_at).toLocaleDateString()}</span>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // Update history page
+  if (container) {
+    if (filtered.length === 0) {
+      container.innerHTML = '<p class="text-muted">No searches found</p>';
+      return;
     }
 
-    if (data.results && data.results.length > 0) {
-      statsChart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-          labels: data.results.map(r => r.type.replace('_', ' ')),
-          datasets: [{
-            data: data.results.map(r => r.count),
-            backgroundColor: [
-              '#3b82f6',
-              '#8b5cf6',
-              '#ec4899',
-              '#f59e0b',
-              '#10b981',
-              '#06b6d4',
-              '#6366f1'
-            ],
-            borderColor: '#1f2937',
-            borderWidth: 2
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: true,
-          plugins: {
-            legend: {
-              labels: {
-                color: '#e5e7eb',
-                font: { size: 12 }
-              }
-            }
-          }
-        }
-      });
-    }
-  } catch (error) {
-    console.error('Stats load error:', error);
+    container.innerHTML = filtered.map(item => `
+      <div class="glass-effect rounded-lg p-4 border-blue-500/20 cursor-pointer card-hover" onclick="viewHistoryItem('${item.id}')">
+        <div class="flex justify-between items-start mb-2">
+          <span class="text-blue-400 font-semibold text-sm">${item.type.replace(/_/g, ' ').toUpperCase()}</span>
+          <span class="text-xs text-muted">${new Date(item.created_at).toLocaleString()}</span>
+        </div>
+        <p class="text-white font-medium mb-2">${item.query}</p>
+        <p class="text-muted text-sm truncate">${JSON.stringify(item.result || {}).substring(0, 100)}...</p>
+      </div>
+    `).join('');
   }
 }
 
-// Initialize on page load
+function filterHistory(filter) {
+  // Update active tab
+  document.querySelectorAll('.filter-tab').forEach(btn => {
+    btn.classList.remove('active');
+  });
+  event.target.classList.add('active');
+
+  updateHistoryDisplay(searchHistory, filter);
+}
+
+function viewHistoryItem(id) {
+  const item = searchHistory.find(x => x.id === parseInt(id));
+  if (item && item.result) {
+    currentResults = item.result;
+    displayResults(item.result, item.type);
+  }
+}
+
+async function clearHistory() {
+  if (confirm('Are you sure you want to clear all search history?')) {
+    try {
+      await fetch('/api/osint/history', { method: 'DELETE' });
+      searchHistory = [];
+      updateHistoryDisplay([], 'all');
+      showAlert('History cleared!', 'success');
+    } catch (error) {
+      showAlert('Error clearing history', 'error');
+    }
+  }
+}
+
+// ============= Dashboard =============
+async function loadDashboard() {
+  try {
+    const statsResponse = await fetch('/api/osint/stats');
+    const statsData = await statsResponse.json();
+
+    // Update stats
+    if (statsData.results) {
+      const total = statsData.results.reduce((sum, item) => sum + item.count, 0);
+      document.getElementById('stat-searches').textContent = total;
+
+      const domains = statsData.results.find(x => x.type === 'domain_recon')?.count || 0;
+      document.getElementById('stat-domains').textContent = domains;
+
+      const ips = statsData.results.find(x => x.type === 'ip_lookup')?.count || 0;
+      document.getElementById('stat-ips').textContent = ips;
+
+      // Update charts
+      updateCharts(statsData.results);
+    }
+
+    // Load history
+    await loadHistory();
+  } catch (error) {
+    console.error('Dashboard load error:', error);
+  }
+}
+
+let usageChart, activityChart;
+
+function updateCharts(stats) {
+  // Destroy old charts
+  if (usageChart) usageChart.destroy();
+  if (activityChart) activityChart.destroy();
+
+  // Usage chart
+  const usageCtx = document.getElementById('usageChart');
+  if (usageCtx) {
+    usageChart = new Chart(usageCtx, {
+      type: 'doughnut',
+      data: {
+        labels: stats.map(s => s.type.replace(/_/g, ' ')),
+        datasets: [{
+          data: stats.map(s => s.count),
+          backgroundColor: ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4', '#6366f1'],
+          borderColor: '#1e293b',
+          borderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { labels: { color: '#e5e7eb' } }
+        }
+      }
+    });
+  }
+
+  // Activity chart
+  const activityCtx = document.getElementById('activityChart');
+  if (activityCtx) {
+    const labels = ['Week 1', 'Week 2', 'Week 3', 'Week 4'];
+    const data = [12, 19, 8, 15];
+
+    activityChart = new Chart(activityCtx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Searches',
+          data: data,
+          borderColor: '#8b5cf6',
+          backgroundColor: 'rgba(139, 92, 246, 0.1)',
+          tension: 0.4,
+          fill: true
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { labels: { color: '#e5e7eb' } }
+        },
+        scales: {
+          y: { ticks: { color: '#9ca3af' } },
+          x: { ticks: { color: '#9ca3af' } }
+        }
+      }
+    });
+  }
+}
+
+// ============= Utilities =============
+function handleEnter(event, tool) {
+  if (event.key === 'Enter') {
+    runTool(tool);
+  }
+}
+
+function showAlert(message, type = 'info') {
+  const alertDiv = document.createElement('div');
+  alertDiv.className = `fixed top-4 right-4 px-6 py-3 rounded-lg font-semibold text-white z-50 slide-in ${
+    type === 'error' ? 'bg-red-500' : type === 'success' ? 'bg-green-500' : 'bg-blue-500'
+  }`;
+  alertDiv.textContent = message;
+  document.body.appendChild(alertDiv);
+
+  setTimeout(() => {
+    alertDiv.style.opacity = '0';
+    setTimeout(() => alertDiv.remove(), 300);
+  }, 3000);
+}
+
+function toggleTheme() {
+  document.body.classList.toggle('dark');
+}
+
+// ============= Initialization =============
 document.addEventListener('DOMContentLoaded', () => {
   connectWebSocket();
-  loadHistory();
-  loadStats();
+  navigate('dashboard');
 
-  // Auto-refresh statistics every 30 seconds
+  // Periodic dashboard refresh
   setInterval(() => {
-    loadStats();
+    if (currentPage === 'dashboard') {
+      loadDashboard();
+    }
   }, 30000);
 });
 
-// Allow Enter key to submit
-document.addEventListener('keypress', (e) => {
-  if (e.key === 'Enter') {
-    const activeElement = document.activeElement;
-    if (activeElement.id === 'domainInput') runTool('domain');
-    if (activeElement.id === 'ipInput') runTool('ip');
-    if (activeElement.id === 'emailInput') runTool('email');
-    if (activeElement.id === 'portHostInput') runTool('port');
-    if (activeElement.id === 'usernameInput') runTool('username');
-    if (activeElement.id === 'sslInput') runTool('ssl');
-    if (activeElement.id === 'subdomainInput') runTool('subdomain');
+// Close modal on escape
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    closeModal();
   }
 });

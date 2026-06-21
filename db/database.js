@@ -10,10 +10,11 @@ export const initializeDatabase = () => {
       query TEXT NOT NULL,
       result TEXT,
       created_at TEXT,
-      UNIQUE(type, query)
+      UNIQUE(type, query, created_at)
     );
 
     CREATE INDEX IF NOT EXISTS idx_type ON searches(type);
+    CREATE INDEX IF NOT EXISTS idx_query ON searches(query);
     CREATE INDEX IF NOT EXISTS idx_created_at ON searches(created_at);
   `);
 };
