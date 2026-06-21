@@ -1,0 +1,40 @@
+{
+  "name": "osint-platform",
+  "version": "1.0.0",
+  "description": "Comprehensive OSINT Platform optimized for Render free tier",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "build": "tsc",
+    "test": "node --test"
+  },
+  "keywords": [
+    "osint",
+    "reconnaissance",
+    "security",
+    "intelligence"
+  ],
+  "author": "Johndoehackie123",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "ws": "^8.14.2",
+    "axios": "^1.6.2",
+    "whois-json": "^2.0.5",
+    "geoip-lite": "^1.4.7",
+    "better-sqlite3": "^9.0.0",
+    "dotenv": "^16.3.1",
+    "cors": "^2.8.5",
+    "compression": "^1.7.4",
+    "helmet": "^7.1.0",
+    "express-rate-limit": "^7.1.5"
+  },
+  "devDependencies": {
+    "typescript": "^5.2.2"
+  },
+  "engines": {
+    "node": "18.x"
+  }
+}

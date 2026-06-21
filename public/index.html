@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OSINT Platform - Professional Intelligence Tools</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    @keyframes pulse-ring {
+      0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+      70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+    }
+    .pulse-ring { animation: pulse-ring 2s infinite; }
+    .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .tool-card { transition: all 0.3s ease; }
+    .tool-card:hover { transform: translateY(-5px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2); }
+    .progress-bar { transition: width 0.3s ease; }
+    .scan-animation { animation: scan 1s infinite; }
+    @keyframes scan { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(1.1); } }
+  </style>
+</head>
+<body class="bg-gray-900 text-gray-100 font-sans">
+  <div id="app">
+    <!-- Navigation -->
+    <nav class="gradient-bg shadow-lg sticky top-0 z-50">
+      <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 bg-blue-400 rounded-lg flex items-center justify-center font-bold text-lg">🕵️</div>
+          <h1 class="text-2xl font-bold text-white">OSINT Platform</h1>
+        </div>
+        <div class="flex items-center space-x-4">
+          <span id="status" class="flex items-center space-x-2 text-sm">
+            <div class="w-2 h-2 bg-green-400 rounded-full pulse-ring"></div>
+            <span>Live</span>
+          </span>
+          <a href="#stats" class="text-white hover:text-blue-300 transition">Stats</a>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Header -->
+    <div class="gradient-bg py-12 text-center">
+      <h2 class="text-4xl font-bold mb-2">Professional OSINT Tools</h2>
+      <p class="text-blue-100">Real-time intelligence gathering & reconnaissance</p>
+    </div>
+
+    <!-- Main Container -->
+    <div class="max-w-7xl mx-auto px-4 py-8">
+      <!-- Progress Indicator -->
+      <div id="progressContainer" class="mb-8 hidden bg-gray-800 rounded-lg p-4 border border-gray-700">
+        <div class="flex justify-between items-center mb-2">
+          <span id="progressLabel" class="text-sm font-semibold">Processing...</span>
+          <span id="progressPercent" class="text-sm text-blue-400">0%</span>
+        </div>
+        <div class="w-full bg-gray-700 rounded-full h-2 overflow-hidden">
+          <div id="progressBar" class="bg-gradient-to-r from-blue-500 to-purple-500 h-full progress-bar" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <!-- Tools Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+        <!-- Domain Recon -->
+        <div class="tool-card bg-gray-800 border border-gray-700 rounded-lg p-6 hover:border-blue-500">
+          <div class="flex items-center space-x-3 mb-4">
+            <span class="text-3xl">🌐</span>
+            <h3 class="text-xl font-bold">Domain Recon</h3>
+          </div>
+          <input type="text" id="domainInput" placeholder="example.com" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white placeholder-gray-400 mb-3 focus:outline-none focus:border-blue-500">
+          <button onclick="runTool('domain')" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-semibold transition">
+            Analyze Domain
+          </button>
+        </div>
+
+        <!-- IP Lookup -->
+        <div class="tool-card bg-gray-800 border border-gray-700 rounded-lg p-6 hover:border-blue-500">
+          <div class="flex items-center space-x-3 mb-4">
+            <span class="text-3xl">📍</span>
+            <h3 class="text-xl font-bold">IP Lookup</h3>
+          </div>
+          <input type="text" id="ipInput" placeholder="192.168.1.1" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white placeholder-gray-400 mb-3 focus:outline-none focus:border-blue-500">
+          <button onclick="runTool('ip')" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-semibold transition">
+            Lookup IP
+          </button>
+        </div>
+
+        <!-- Email Verify -->
+        <div class="tool-card bg-gray-800 border border-gray-700 rounded-lg p-6 hover:border-blue-500">
+          <div class="flex items-center space-x-3 mb-4">
+            <span class="text-3xl">✉️</span>
+            <h3 class="text-xl font-bold">Email Verify</h3>
+          </div>
+          <input type="text" id="emailInput" placeholder="user@example.com" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white placeholder-gray-400 mb-3 focus:outline-none focus:border-blue-500">
+          <button onclick="runTool('email')" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-semibold transition">
+            Verify Email
+          </button>
+        </div>
+
+        <!-- Port Scanner -->
+        <div class="tool-card bg-gray-800 border border-gray-700 rounded-lg p-6 hover:border-blue-500">
+          <div class="flex items-center space-x-3 mb-4">
+            <span class="text-3xl">🔌</span>
+            <h3 class="text-xl font-bold">Port Scanner</h3>
+          </div>
+          <input type="text" id="portHostInput" placeholder="example.com" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white placeholder-gray-400 mb-3 focus:outline-none focus:border-blue-500">
+          <button onclick="runTool('port')" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-semibold transition">
+            Scan Ports
+          </button>
+        </div>
+
+        <!-- Username Search -->
+        <div class="tool-card bg-gray-800 border border-gray-700 rounded-lg p-6 hover:border-blue-500">
+          <div class="flex items-center space-x-3 mb-4">
+            <span class="text-3xl">👤</span>
+            <h3 class="text-xl font-bold">Username Search</h3>
+          </div>
+          <input type="text" id="usernameInput" placeholder="username" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white placeholder-gray-400 mb-3 focus:outline-none focus:border-blue-500">
+          <button onclick="runTool('username')" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-semibold transition">
+            Search Username
+          </button>
+        </div>
+
+        <!-- SSL Lookup -->
+        <div class="tool-card bg-gray-800 border border-gray-700 rounded-lg p-6 hover:border-blue-500">
+          <div class="flex items-center space-x-3 mb-4">
+            <span class="text-3xl">🔒</span>
+            <h3 class="text-xl font-bold">SSL Lookup</h3>
+          </div>
+          <input type="text" id="sslInput" placeholder="example.com" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white placeholder-gray-400 mb-3 focus:outline-none focus:border-blue-500">
+          <button onclick="runTool('ssl')" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-semibold transition">
+            Check SSL
+          </button>
+        </div>
+
+        <!-- Subdomain Finder -->
+        <div class="tool-card bg-gray-800 border border-gray-700 rounded-lg p-6 hover:border-blue-500">
+          <div class="flex items-center space-x-3 mb-4">
+            <span class="text-3xl">🔍</span>
+            <h3 class="text-xl font-bold">Subdomain Finder</h3>
+          </div>
+          <input type="text" id="subdomainInput" placeholder="example.com" class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white placeholder-gray-400 mb-3 focus:outline-none focus:border-blue-500">
+          <button onclick="runTool('subdomain')" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded font-semibold transition">
+            Find Subdomains
+          </button>
+        </div>
+      </div>
+
+      <!-- Results Section -->
+      <div id="resultsContainer" class="mb-12 hidden">
+        <h2 class="text-2xl font-bold mb-6 text-white">Results</h2>
+        <div id="resultsContent" class="bg-gray-800 border border-gray-700 rounded-lg p-6 overflow-auto max-h-96">
+          <pre id="resultsJSON" class="text-sm text-gray-300 font-mono"></pre>
+        </div>
+      </div>
+
+      <!-- Statistics -->
+      <div id="stats" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+        <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
+          <h3 class="text-xl font-bold mb-4">Search History</h3>
+          <div id="historyList" class="space-y-2 max-h-64 overflow-auto">
+            <p class="text-gray-400">Loading history...</p>
+          </div>
+        </div>
+        <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
+          <h3 class="text-xl font-bold mb-4">Statistics</h3>
+          <canvas id="statsChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Ad Banner -->
+      <div class="bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg p-8 text-center mb-12 border-2 border-purple-400">
+        <h3 class="text-2xl font-bold mb-2">🚀 Powered by Zexyo</h3>
+        <p class="mb-4">Check out <a href="https://zexyo.xyz" target="_blank" class="underline font-bold hover:text-white">zexyo.xyz</a> for premium OSINT services and tools</p>
+        <a href="https://zexyo.xyz" target="_blank" class="inline-block bg-white text-purple-600 px-6 py-2 rounded font-bold hover:bg-purple-50 transition">
+          Visit Zexyo →
+        </a>
+      </div>
+
+      <!-- Footer -->
+      <footer class="text-center text-gray-400 border-t border-gray-700 pt-8">
+        <p>OSINT Platform v1.0 | Optimized for Render | WebSocket-enabled Real-time Updates</p>
+        <p class="text-sm mt-2">⚠️ Use responsibly and ethically. Follow local laws and regulations.</p>
+      </footer>
+    </div>
+  </div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>
